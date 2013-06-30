@@ -13,6 +13,9 @@ public final class TokenBuckets
 
   private TokenBuckets() {}
 
+  /*
+   * use to create a bucket with a capacity X, filling it at a rate of N per period P. The very generic case is this one. The 
+   */
     public static TokenBucket newStartedMemoryFixedIntervalRefill(int capacityTokens, long refillTokens, long period, TimeUnit unit) {
         final Ticker ticker = Ticker.systemTicker();
         final SemaphoreBackedTokenBucket tokenBucket = new SemaphoreBackedTokenBucket(0, capacityTokens, true);
@@ -20,6 +23,33 @@ public final class TokenBuckets
         return tokenBucket;
     }
     
+    /*
+     * fill complete bucket every period! This is the special case of capacity = refill Magnitude / period.
+     * expect peaks at each interval end like this:
+     * |\   |\___|\   |\
+     * | \__|      \  | \
+     * |            \_|  \
+     */
+    public static TokenBucket newDelayedPulsedIntervalRefill(int capacityTokens, long delay, TimeUnit delayUnit, long period, TimeUnit periodUnit) {
+        final Ticker ticker = Ticker.systemTicker();
+        final BigDecimal unitsPerNano = BigDecimal.valueOf(capacityTokens).divide(BigDecimal.valueOf(periodUnit.toNanos(period)), 10, RoundingMode.DOWN);
+        final int initialTokensByRatioOfDelay = BigDecimal.valueOf(delayUnit.toNanos(delay)).multiply(unitsPerNano).intValue();
+        final SemaphoreBackedTokenBucket tokenBucket = new SemaphoreBackedTokenBucket(initialTokensByRatioOfDelay, capacityTokens, true);
+        final RefillStrategy strategy = new MemoryFixedIntervalRefillStrategy(tokenBucket, ticker, BigDecimal.valueOf(capacityTokens), period, periodUnit, ticker.read() + delayUnit.toNanos(delay));
+        return tokenBucket;
+    }
+    
+    /*
+     * trickle tokens at a rate decided by capacity/period. This is the special case where the rate is decided 
+     * by dividing capacity/periodInNanos and period of refilling is 1 nano
+     * expect a curve that looks like (no flat areas because we are always filling:
+     * 
+     * 
+     * 
+     *   /\          /\/\
+     *  /  \/\/\/\/\/    \
+     * /                  \/\
+     */
     public static TokenBucket newStartedMemoryNanoIntervalRefill(int capacityTokens, long period, TimeUnit unit) {
         final Ticker ticker = Ticker.systemTicker();
         final SemaphoreBackedTokenBucket tokenBucket = new SemaphoreBackedTokenBucket(0, capacityTokens, true);

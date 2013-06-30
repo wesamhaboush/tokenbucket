@@ -25,7 +25,7 @@ public class SemaphoreBackedTokenBucket extends Semaphore implements TokenBucket
 
     @Override
     public boolean tryAcquire(int numTokens) {
-//        System.out.println(String.format("tryAcquire tokens[%s], available[%s]", numTokens, availablePermits()));
+        System.out.println(String.format("tryAcquire tokens[%s], available[%s]", numTokens, availablePermits()));
         if (numTokens > capacity) {
             throw new IllegalArgumentException(String.format("cannot grant [%s] tokens, it is more than this bucket's capacity[%s]", numTokens, capacity));
         }
@@ -58,6 +58,6 @@ public class SemaphoreBackedTokenBucket extends Semaphore implements TokenBucket
     public void release(int permits) {
         //top permits if it does not exceed capacity to do so, otherwise, top to capacity
         super.release(Math.min(permits, capacity - availablePermits()));
-//        System.out.println("tokenBucket size:" + this.availablePermits());
+        System.out.println("tokenBucket size:" + this.availablePermits());
     }
 }

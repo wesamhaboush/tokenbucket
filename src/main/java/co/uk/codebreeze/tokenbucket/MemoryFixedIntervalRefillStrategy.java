@@ -12,6 +12,12 @@ public class MemoryFixedIntervalRefillStrategy implements RefillStrategy {
 
     //1 sec is the minimum update period, because less than that it becomes busy loop
     private static final long DEFAULT_MIN_UPDATE_NANOS = TimeUnit.SECONDS.toNanos(1);
+    private final Runnable REFILL_TASK = new Runnable() {
+        @Override
+        public void run() {
+            refill();
+        }
+    };
     private final Ticker ticker;
     private final BigDecimal tokensPerPeriod;
     private final long periodInNanos;
@@ -27,22 +33,16 @@ public class MemoryFixedIntervalRefillStrategy implements RefillStrategy {
         this.previousRefillTime = startTimeInNanos;
         this.balance = BigDecimal.ZERO;
         this.semaphore = semaphore;
+        final long initialDelay = Math.max(0, startTimeInNanos - ticker.read());
         //run every second
         if (unit.toNanos(period) > DEFAULT_MIN_UPDATE_NANOS) {
-            Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new Runnable() {
-                public void run() {
-                    refill();
-                }
-            }, 0, period, unit);
+            Executors.newScheduledThreadPool(1).scheduleAtFixedRate(REFILL_TASK, initialDelay, unit.toNanos(period), TimeUnit.NANOSECONDS);
         } else {
-            Executors.newScheduledThreadPool(1).scheduleAtFixedRate(new Runnable() {
-                public void run() {
-                    refill();
-                }
-            }, 0, DEFAULT_MIN_UPDATE_NANOS, TimeUnit.NANOSECONDS);
+            Executors.newScheduledThreadPool(1).scheduleAtFixedRate(REFILL_TASK, initialDelay, DEFAULT_MIN_UPDATE_NANOS, TimeUnit.NANOSECONDS);
         }
     }
 
+    @Override
     public void refill() {
         final long nowInNanos = ticker.read();
         //how many nanos passed since last refill
