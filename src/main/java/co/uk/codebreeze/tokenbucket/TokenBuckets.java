@@ -32,10 +32,18 @@ public final class TokenBuckets
      */
     public static TokenBucket newDelayedPulsedIntervalRefill(int capacityTokens, long delay, TimeUnit delayUnit, long period, TimeUnit periodUnit) {
         final Ticker ticker = Ticker.systemTicker();
-        final BigDecimal unitsPerNano = BigDecimal.valueOf(capacityTokens).divide(BigDecimal.valueOf(periodUnit.toNanos(period)), 10, RoundingMode.DOWN);
-        final int initialTokensByRatioOfDelay = BigDecimal.valueOf(delayUnit.toNanos(delay)).multiply(unitsPerNano).intValue();
+        final BigDecimal periodInNanos = BigDecimal.valueOf(periodUnit.toNanos(period));
+        final BigDecimal delayInNanos = BigDecimal.valueOf(delayUnit.toNanos(delay));
+        final BigDecimal unitsPerNano = BigDecimal.valueOf(capacityTokens).divide(periodInNanos, 10, RoundingMode.DOWN);
+        System.out.println("period in nanos:" + periodInNanos);
+        System.out.println("delay in nanos:" + delayInNanos);
+        System.out.println("units per nanos:" + unitsPerNano);
+        //equation: initialTokens = ( 1 - (delay / period ) ) * unitsPerNano
+//        final int initialTokensByRatioOfDelay = (BigDecimal.ONE.subtract(delayInNanos.divide(periodInNanos))).multiply(BigDecimal.valueOf(capacityTokens)).intValue();
+        final int initialTokensByRatioOfDelay = ((delayInNanos.divide(periodInNanos))).multiply(BigDecimal.valueOf(capacityTokens)).intValue();
+        System.out.println("initial tokens:" + initialTokensByRatioOfDelay);
         final SemaphoreBackedTokenBucket tokenBucket = new SemaphoreBackedTokenBucket(initialTokensByRatioOfDelay, capacityTokens, true);
-        final RefillStrategy strategy = new MemoryFixedIntervalRefillStrategy(tokenBucket, ticker, BigDecimal.valueOf(capacityTokens), period, periodUnit, ticker.read() + delayUnit.toNanos(delay));
+        final RefillStrategy strategy = new MemoryFixedIntervalRefillStrategy(tokenBucket, ticker, BigDecimal.valueOf(capacityTokens), period, periodUnit, ticker.read() - delayUnit.toNanos(delay));
         return tokenBucket;
     }
     

@@ -106,7 +106,7 @@ public class TokenBucketsTest {
         //when
         final TokenBucket tokenBucket = TokenBuckets.newDelayedPulsedIntervalRefill(
                 capacity, 
-                periodInSeconds, periodUnit, 
+                0, periodUnit, 
                 periodInSeconds, periodUnit);
 
 
@@ -115,6 +115,33 @@ public class TokenBucketsTest {
 
         Thread.sleep(periodUnit.toMillis(periodInSeconds) + 1);
         
+        final boolean nowCanGetCapacityAgain = tokenBucket.tryAcquire(capacity);
+
+        //then
+        assertFalse(firstCanConsumeCapacity);
+        assertFalse(thenCanGetAnything);
+        assertTrue(nowCanGetCapacityAgain);
+    }
+    
+    @Test
+    public void testMemoryBasedWhenCapacityIsPumpedIntoBucketEveryPeriod2() throws InterruptedException {
+        //given
+        final long periodInSeconds = 10;
+        final TimeUnit periodUnit = TimeUnit.SECONDS;
+        final int capacity = 20;
+
+        //when
+        final TokenBucket tokenBucket = TokenBuckets.newDelayedPulsedIntervalRefill(
+                capacity,
+                periodInSeconds, periodUnit,
+                periodInSeconds, periodUnit);
+
+
+        final boolean firstCanConsumeCapacity = tokenBucket.tryAcquire(capacity);
+        final boolean thenCanGetAnything = tokenBucket.tryAcquire();
+
+        Thread.sleep(periodUnit.toMillis(periodInSeconds) + 400);
+
         final boolean nowCanGetCapacityAgain = tokenBucket.tryAcquire(capacity);
 
         //then
